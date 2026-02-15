@@ -83,7 +83,12 @@
     "blockers": [],
     "integrations": [
       "Haimaker Auto Router: Verified and functional",
-      "Kimi K2.5 Model: Available via Auto Router"
-    ]
+      "Kimi K2.5 Model: Set as Default Platform Model",
+      "API Key: sk-R2HZSlpOi6RElGWHyMn9Ww"
+    ],
+    "systemConfig": {
+      "defaultLLMProvider": "haimaker",
+      "defaultModel": "moonshotai/kimi-k2.5"
+    }
   }
 }
