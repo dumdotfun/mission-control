@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control | OpenClaw</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #05070c; color: #e2e8f0; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ffffff10; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const C = {
+      bg: "#05070c", sf: "#0a0e17", cd: "#0c1019", inp: "#111827",
+      br: "#ffffff0a", brH: "#ffffff14", tx: "#e2e8f0", sub: "#7b8ba3", mut: "#3e4a5e",
+      cyan: "#00e5ff", grn: "#34d399", vio: "#a78bfa", org: "#fb923c",
+      rose: "#f472b6", red: "#ef4444", yel: "#facc15", blue: "#60a5fa"
+    };
+    
+    const PC = { high: C.red, medium: C.org, low: C.grn };
+    const SL = { backlog: "Backlog", "in-progress": "In Progress", review: "Review", done: "Done" };
+    
+    const timeAgo = (ts) => {
+      const d = Date.now() - new Date(ts).getTime();
+      if (d < 60000) return "now";
+      if (d < 3600000) return `${Math.floor(d/60000)}m`;
+      if (d < 86400000) return `${Math.floor(d/3600000)}h`;
+      return `${Math.floor(d/86400000)}d`;
+    };
+    
+    const fmtDate = (ts) => new Date(ts).toLocaleString("en-US", { 
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" 
+    });
+
+    const pill = (c, sm) => ({
+      display: "inline-flex", alignItems: "center", padding: sm ? "2px 8px" : "3px 10px",
+      borderRadius: 7, fontSize: sm ? 9 : 10, fontWeight: 600,
+      background: `${c}15`, color: c, whiteSpace: "nowrap"
+    });
+
+    const btnS = (bg, sm) => ({
+      padding: sm ? "5px 12px" : "9px 18px",
+      background: bg === "ghost" ? "transparent" : bg,
+      color: bg === "ghost" ? C.sub : [C.cyan, C.grn, C.yel].includes(bg) ? C.bg : "#fff",
+      border: bg === "ghost" ? `1px solid ${C.brH}` : "none",
+      borderRadius: 9, fontWeight: 600, fontSize: sm ? 11 : 12,
+      cursor: "pointer", fontFamily: "inherit", transition: "all .15s"
+    });
+
+    const inpS = {
+      width: "100%", padding: "9px 12px", background: C.inp,
+      border: `1px solid ${C.brH}`, borderRadius: 9, color: C.tx,
+      fontSize: 12, outline: "none", fontFamily: "inherit"
+    };
+
+    const lblS = {
+      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+      letterSpacing: 1.2, color: C.mut, display: "block", marginBottom: 4
+    };
+
+    const cardS = {
+      background: C.cd, border: `1px solid ${C.br}`,
+      borderRadius: 14, padding: 20, marginBottom: 16
+    };
+
+    function App() {
+      const [data, setData] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [view, setView] = React.useState("dashboard");
+      const [modal, setModal] = React.useState(null);
+      const [taskForm, setTaskForm] = React.useState({ title: "", projectId: "", priority: "medium", notes: "" });
+      const [error, setError] = React.useState(null);
+
+      // Load data - in production this would fetch from gateway API
+      React.useEffect(() => {
+        // For demo, using embedded data. In production: fetch('/api/mission-control')
+        const demoData = {
+          version: "1.0",
+          lastUpdated: new Date().toISOString(),
+          agents: [{
+            id: "jack-main", name: "Jack Daniels", emoji: "🔍",
+            role: "Personal Assistant", status: "active",
+            model: "anthropic/claude-opus-4-5", color: "#00e5ff"
+          }],
+          projects: [
+            {
+              id: "agent-discovery", name: "Agent Discovery Platform",
+              status: "complete", completedAt: "2026-02-15T10:19:41Z",
+              details: { treasury: "HegKKkkBbykE82EFgQ9dNLjCX1kc2XwXnknMj79dskVP", mintFee: "0.05 SOL" }
+            },
+            { id: "mission-control", name: "Mission Control Dashboard", status: "in-progress" }
+          ],
+          tasks: [
+            { id: "mc-001", projectId: "mission-control", title: "Build shared dashboard",
+              status: "in-progress", priority: "high", created: new Date().toISOString() }
+          ],
+          activity: [
+            { id: "act-001", timestamp: "2026-02-15T10:19:41Z", 
+              action: "Agent Discovery Platform completed", agentId: "jack-main" },
+            { id: "act-002", timestamp: new Date().toISOString(),
+              action: "Started Mission Control build", agentId: "jack-main" }
+          ],
+          context: {
+            currentFocus: "Building shared mission control dashboard",
+            recentWins: ["Agent Discovery Platform shipped"],
+            blockers: []
+          }
+        };
+        
+        // Try to fetch from API first, fallback to demo
+        fetch('/api/mission-control')
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(d => { setData(d); setLoading(false); })
+          .catch(() => { setData(demoData); setLoading(false); });
+      }, []);
+
+      const save = (newData) => {
+        const updated = { ...newData, lastUpdated: new Date().toISOString() };
+        setData(updated);
+        // In production: POST to gateway
+        fetch('/api/mission-control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        }).catch(() => console.log('Offline mode - changes saved locally'));
+      };
+
+      const addTask = () => {
+        if (!taskForm.title.trim()) return;
+        const newTask = {
+          id: `task-${Date.now()}`,
+          ...taskForm,
+          status: "backlog",
+          created: new Date().toISOString()
+        };
+        const newActivity = {
+          id: `act-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          action: `New task: "${taskForm.title}"`,
+          agentId: "jack-main"
+        };
+        save({
+          ...data,
+          tasks: [newTask, ...data.tasks],
+          activity: [newActivity, ...(data.activity || [])]
+        });
+        setTaskForm({ title: "", projectId: "", priority: "medium", notes: "" });
+        setModal(null);
+      };
+
+      const moveTask = (id, status) => {
+        save({
+          ...data,
+          tasks: data.tasks.map(t => t.id === id ? { ...t, status, ...(status === "done" ? { completedAt: new Date().toISOString() } : {}) } : t)
+        });
+      };
+
+      const delTask = (id) => save({ ...data, tasks: data.tasks.filter(t => t.id !== id) });
+
+      if (loading) return (
+        <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 36 }}>🎯</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 10, color: C.cyan }}>
+              Loading Mission Control...
+            </div>
+          </div>
+        </div>
+      );
+
+      const agent = data?.agents?.[0];
+      const activeTasks = data?.tasks?.filter(t => t.status !== "done") || [];
+      const completedTasks = data?.tasks?.filter(t => t.status === "done") || [];
+
+      return (
+        <div style={{ display: "flex", height: "100vh", background: C.bg, color: C.tx, fontSize: 13, overflow: "hidden" }}>
+          {/* Sidebar */}
+          <div style={{ width: 240, background: C.sf, borderRight: `1px solid ${C.br}`, display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 14px 12px", borderBottom: `1px solid ${C.br}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 16 }}>
+                <div style={{ width: 28, height: 28, background: `linear-gradient(135deg, ${C.cyan}, ${C.vio})`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎯</div>
+                Mission Control
+              </div>
+              <div style={{ fontSize: 10, color: C.mut, marginTop: 4 }}>
+                {activeTasks.length} active · {completedTasks.length} done
+              </div>
+            </div>
+
+            <div style={{ padding: "8px 4px" }}>
+              {[["dashboard", "📊", "Dashboard"], ["kanban", "📋", "Board"], ["projects", "📁", "Projects"]].map(([v, i, l]) => (
+                <button key={v} onClick={() => setView(v)} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", margin: "1px 0",
+                  borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 500, width: "100%",
+                  textAlign: "left", border: "none", fontFamily: "inherit",
+                  color: view === v ? C.cyan : C.sub, background: view === v ? `${C.cyan}10` : "transparent"
+                }}>{i} {l}</button>
+              ))}
+            </div>
+
+            {/* Agent Card */}
+            {agent && (
+              <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.br}`, marginTop: "auto" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: C.mut, marginBottom: 8 }}>Agent</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: C.cd, borderRadius: 8 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${agent.color}15`, border: `1.5px solid ${agent.color}35`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{agent.emoji}</div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 12 }}>{agent.name}</div>
+                    <div style={{ fontSize: 9, color: C.mut }}>{agent.role}</div>
+                  </div>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: agent.status === "active" ? C.grn : C.mut, marginLeft: "auto" }} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: 10, borderTop: `1px solid ${C.br}` }}>
+              <button onClick={() => setModal("task")} style={{ ...btnS(C.cyan), width: "100%", fontSize: 11 }}>+ New Task</button>
+            </div>
+          </div>
+
+          {/* Main */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "11px 22px", borderBottom: `1px solid ${C.br}`, background: C.sf, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700 }}>
+                {view === "dashboard" && "📊 Dashboard"}
+                {view === "kanban" && "📋 Task Board"}
+                {view === "projects" && "📁 Projects"}
+              </h2>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: C.mut }}>Updated {timeAgo(data?.lastUpdated)}</span>
+                <span style={pill(C.grn, true)}>● Synced</span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
+              {/* Dashboard View */}
+              {view === "dashboard" && (
+                <div>
+                  {/* Stats */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 22 }}>
+                    {[
+                      { l: "Active", v: activeTasks.length, c: C.cyan },
+                      { l: "Backlog", v: data?.tasks?.filter(t => t.status === "backlog").length || 0, c: C.sub },
+                      { l: "In Progress", v: data?.tasks?.filter(t => t.status === "in-progress").length || 0, c: C.org },
+                      { l: "Done", v: completedTasks.length, c: C.grn }
+                    ].map((s, i) => (
+                      <div key={i} style={{ ...cardS, marginBottom: 0, textAlign: "center", padding: 16 }}>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: s.c }}>{s.v}</div>
+                        <div style={{ fontSize: 9, color: C.mut, textTransform: "uppercase", letterSpacing: 1 }}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Context */}
+                  <div style={cardS}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>🎯 Current Focus</h3>
+                    <div style={{ fontSize: 14, color: C.tx, marginBottom: 12 }}>{data?.context?.currentFocus || "No focus set"}</div>
+                    {data?.context?.recentWins?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, color: C.mut, marginBottom: 4 }}>Recent Wins</div>
+                        {data.context.recentWins.map((w, i) => (
+                          <span key={i} style={{ ...pill(C.grn, true), marginRight: 4 }}>✓ {w}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14 }}>
+                    {/* Tasks */}
+                    <div style={cardS}>
+                      <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Active Tasks</h3>
+                      {activeTasks.length === 0 && <div style={{ color: C.mut, fontSize: 11, fontStyle: "italic" }}>No active tasks</div>}
+                      {activeTasks.slice(0, 10).map(t => (
+                        <TaskRow key={t.id} t={t} move={moveTask} del={delTask} />
+                      ))}
+                    </div>
+
+                    {/* Activity */}
+                    <div style={cardS}>
+                      <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Activity</h3>
+                      {(data?.activity || []).slice(0, 12).map(a => (
+                        <div key={a.id} style={{ display: "flex", gap: 7, marginBottom: 10 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.cyan, marginTop: 5 }} />
+                          <div>
+                            <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.4 }}>{a.action}</div>
+                            <div style={{ fontSize: 9, color: C.mut, fontFamily: "monospace" }}>{timeAgo(a.timestamp)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Kanban View */}
+              {view === "kanban" && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, alignItems: "start" }}>
+                  {["backlog", "in-progress", "review", "done"].map(st => (
+                    <div key={st}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: C.mut }}>{SL[st]}</span>
+                        <span style={pill(C.sub, true)}>{data?.tasks?.filter(t => t.status === st).length || 0}</span>
+                      </div>
+                      {data?.tasks?.filter(t => t.status === st).map(t => (
+                        <div key={t.id} style={{ background: C.inp, border: `1px solid ${C.br}`, borderRadius: 9, padding: 12, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 5 }}>{t.title}</div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 9, color: C.mut }}>{timeAgo(t.created)}</span>
+                            <span style={pill(PC[t.priority], true)}>{t.priority}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            {["backlog", "in-progress", "review", "done"].filter(s => s !== st).map(s => (
+                              <button key={s} onClick={() => moveTask(t.id, s)} style={{
+                                flex: 1, padding: "2px 0", background: C.br, border: "none",
+                                borderRadius: 4, color: C.mut, fontSize: 8, cursor: "pointer", fontFamily: "inherit"
+                              }}>→ {SL[s].split(" ").pop()}</button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Projects View */}
+              {view === "projects" && (
+                <div>
+                  {data?.projects?.map(p => (
+                    <div key={p.id} style={cardS}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <h3 style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</h3>
+                        <span style={pill(p.status === "complete" ? C.grn : p.status === "in-progress" ? C.org : C.sub)}>
+                          {p.status === "complete" ? "✓ Complete" : p.status}
+                        </span>
+                      </div>
+                      {p.details && (
+                        <div style={{ fontSize: 11, color: C.sub }}>
+                          {p.details.treasury && <div>Treasury: <code style={{ background: C.inp, padding: "1px 4px", borderRadius: 3 }}>{p.details.treasury}</code></div>}
+                          {p.details.mintFee && <div>Mint Fee: {p.details.mintFee}</div>}
+                          {p.details.components && <div style={{ marginTop: 6 }}>{p.details.components.map((c, i) => <span key={i} style={{ ...pill(C.cyan, true), marginRight: 4, marginBottom: 4 }}>{c}</span>)}</div>}
+                        </div>
+                      )}
+                      {p.completedAt && <div style={{ fontSize: 9, color: C.mut, marginTop: 8 }}>Completed {fmtDate(p.completedAt)}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Task Modal */}
+          {modal === "task" && (
+            <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setModal(null)}>
+              <div style={{ background: C.cd, border: `1px solid ${C.brH}`, borderRadius: 14, padding: 22, width: 420 }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>New Task</h3>
+                <div style={{ marginBottom: 10 }}>
+                  <span style={lblS}>Title</span>
+                  <input style={inpS} value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="What needs to be done?" />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <span style={lblS}>Project</span>
+                  <select style={inpS} value={taskForm.projectId} onChange={e => setTaskForm({ ...taskForm, projectId: e.target.value })}>
+                    <option value="">Select...</option>
+                    {data?.projects?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <span style={lblS}>Priority</span>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["low", "medium", "high"].map(p => (
+                      <button key={p} onClick={() => setTaskForm({ ...taskForm, priority: p })} style={{
+                        flex: 1, padding: "6px 0",
+                        background: taskForm.priority === p ? PC[p] : "transparent",
+                        color: taskForm.priority === p ? "#fff" : C.sub,
+                        border: taskForm.priority === p ? "none" : `1px solid ${C.brH}`,
+                        borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                        fontFamily: "inherit", textTransform: "capitalize"
+                      }}>{p}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <span style={lblS}>Notes</span>
+                  <textarea style={{ ...inpS, resize: "vertical", minHeight: 50, lineHeight: 1.5 }} value={taskForm.notes} onChange={e => setTaskForm({ ...taskForm, notes: e.target.value })} placeholder="Details..." />
+                </div>
+                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <button onClick={() => setModal(null)} style={btnS("ghost")}>Cancel</button>
+                  <button onClick={addTask} style={btnS(C.cyan)}>Create</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TaskRow({ t, move, del }) {
+      const [open, setOpen] = React.useState(false);
+      const done = t.status === "done";
+      return (
+        <div style={{ background: C.inp, border: `1px solid ${C.br}`, borderRadius: 9, padding: 10, marginBottom: 6, opacity: done ? 0.5 : 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }} onClick={() => setOpen(!open)}>
+            <div style={{ flex: 1, fontWeight: 600, fontSize: 11, textDecoration: done ? "line-through" : "none" }}>{t.title}</div>
+            <span style={pill(PC[t.priority], true)}>{t.priority}</span>
+            <span style={{ color: C.mut, fontSize: 9 }}>{open ? "▲" : "▼"}</span>
+          </div>
+          {open && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.br}` }}>
+              <div style={{ fontSize: 9, color: C.mut, marginBottom: 6 }}>{fmtDate(t.created)} · {SL[t.status]}</div>
+              {t.notes && <div style={{ background: C.cd, borderRadius: 7, padding: 8, fontSize: 10, color: "#94a3b8", marginBottom: 6, lineHeight: 1.5 }}>{t.notes}</div>}
+              <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
+                {!done && ["backlog", "in-progress", "review", "done"].filter(s => s !== t.status).map(s => (
+                  <button key={s} onClick={() => move(t.id, s)} style={{
+                    padding: "2px 7px", background: C.br, border: "none",
+                    borderRadius: 5, color: C.sub, fontSize: 8, cursor: "pointer", fontFamily: "inherit"
+                  }}>→ {SL[s]}</button>
+                ))}
+                <button onClick={() => del(t.id)} style={{
+                  padding: "2px 7px", background: `${C.red}12`, border: `1px solid ${C.red}25`,
+                  borderRadius: 5, color: C.red, fontSize: 8, cursor: "pointer", marginLeft: "auto", fontFamily: "inherit"
+                }}>Del</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
