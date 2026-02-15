@@ -79,6 +79,9 @@
       "Design Reputation Scoring",
       "Build Agent Marketplace"
     ],
-    "strategicDirection": "Increase platform value through advanced features and user trust mechanisms"
+    "strategicDirection": "Increase platform value through advanced features and user trust mechanisms",
+    "blockers": [
+      "Haimaker API: Budget limit reached. Need to update team budget."
+    ]
   }
 }
