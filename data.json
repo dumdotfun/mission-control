@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "lastUpdated": "2026-02-15T10:28:00Z",
+  "lastUpdated": "2026-02-15T10:37:00Z",
   "agents": [
     {
       "id": "jack-main",
@@ -14,21 +14,10 @@
   ],
   "projects": [
     {
-      "id": "agent-discovery",
-      "name": "Agent Discovery Platform",
-      "status": "complete",
-      "completedAt": "2026-02-15T10:19:41Z",
-      "details": {
-        "treasury": "HegKKkkBbykE82EFgQ9dNLjCX1kc2XwXnknMj79dskVP",
-        "mintFee": "0.05 SOL",
-        "components": ["Smart Contract", "TypeScript SDK", "Frontend (Next.js)", "Backend API", "Indexer", "Docker", "Docs"]
-      }
-    },
-    {
       "id": "mission-control",
       "name": "Mission Control Dashboard",
       "status": "complete",
-      "completedAt": "2026-02-15T10:28:00Z",
+      "completedAt": "2026-02-15T10:37:00Z",
       "details": {
         "repo": "https://github.com/dumdotfun/mission-control",
         "url": "https://dumdotfun.github.io/mission-control/",
@@ -36,41 +25,18 @@
       }
     }
   ],
-  "tasks": [
-    {
-      "id": "mc-001",
-      "projectId": "mission-control",
-      "title": "Build shared dashboard",
-      "status": "done",
-      "priority": "high",
-      "created": "2026-02-15T10:21:00Z",
-      "completedAt": "2026-02-15T10:28:00Z",
-      "notes": "Dashboard deployed to GitHub Pages"
-    }
-  ],
+  "tasks": [],
   "activity": [
     {
-      "id": "act-003",
-      "timestamp": "2026-02-15T10:28:00Z",
-      "action": "Mission Control deployed to GitHub Pages",
-      "agentId": "jack-main"
-    },
-    {
-      "id": "act-002", 
-      "timestamp": "2026-02-15T10:21:00Z",
-      "action": "Started Mission Control dashboard build",
-      "agentId": "jack-main"
-    },
-    {
       "id": "act-001",
-      "timestamp": "2026-02-15T10:19:41Z",
-      "action": "Agent Discovery Platform completed",
+      "timestamp": "2026-02-15T10:37:00Z",
+      "action": "Mission Control dashboard deployed",
       "agentId": "jack-main"
     }
   ],
   "context": {
-    "currentFocus": "Mission Control live - ready for new tasks",
-    "recentWins": ["Agent Discovery Platform shipped", "Mission Control deployed"],
+    "currentFocus": "Ready for tasks",
+    "recentWins": ["Mission Control deployed"],
     "blockers": []
   }
 }
