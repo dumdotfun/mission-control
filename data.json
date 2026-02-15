@@ -80,8 +80,10 @@
       "Build Agent Marketplace"
     ],
     "strategicDirection": "Increase platform value through advanced features and user trust mechanisms",
-    "blockers": [
-      "Haimaker API: Budget limit reached. Need to update team budget."
+    "blockers": [],
+    "integrations": [
+      "Haimaker Auto Router: Verified and functional",
+      "Kimi K2.5 Model: Available via Auto Router"
     ]
   }
 }
